@@ -1,0 +1,24 @@
+{# expects: span, spans_by_parent #}
+<li>
+  <details class="span" {% if not span.parent_span_id %}open{% endif %}>
+    <summary>
+      <code>{{ span.name }}</code>
+      <span class="duration">{{ span.duration_ms }}ms</span>
+      <span class="status status-{{ span.status_code|lower }}">{{ span.status_code }}</span>
+    </summary>
+    <dl class="attrs">
+      {% set merged = span_display_attrs(span) %}
+      {% for k, v in merged %}
+        <dt>{{ k }}</dt><dd>{{ render_attr_value(k, v)|safe }}</dd>
+      {% endfor %}
+    </dl>
+    {% set children = spans_by_parent.get(span.span_id, []) %}
+    {% if children %}
+      <ol class="span-tree">
+        {% for child in children %}
+          {% with span=child %}{% include "_span.html" %}{% endwith %}
+        {% endfor %}
+      </ol>
+    {% endif %}
+  </details>
+</li>

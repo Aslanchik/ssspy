@@ -1,0 +1,25 @@
+{% extends "base.html" %}
+{% block title %}trace {{ trace.trace_id.hex()[:8] }} — ssspy{% endblock %}
+{% block content %}
+<h1>trace <code>{{ trace.trace_id.hex() }}</code></h1>
+<dl class="trace-meta">
+  <dt>started</dt><dd>{{ trace.start_time.isoformat(timespec="seconds") }}</dd>
+  <dt>ended</dt>
+  <dd>
+    {% if trace.end_time %}{{ trace.end_time.isoformat(timespec="seconds") }}
+    {% else %}<span class="badge incomplete">(incomplete)</span>{% endif %}
+  </dd>
+  <dt>spans</dt><dd>{{ trace.span_count }}</dd>
+</dl>
+
+{% if agent_name == "go-phish" %}
+  {% include "_agents/go-phish.html" %}
+{% endif %}
+
+<h2>Span tree</h2>
+<ol class="span-tree">
+  {% for root in roots %}
+    {% with span=root %}{% include "_span.html" %}{% endwith %}
+  {% endfor %}
+</ol>
+{% endblock %}

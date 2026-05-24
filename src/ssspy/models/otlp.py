@@ -27,7 +27,23 @@ def _hexify_span_ids(req: dict[str, Any]) -> None:
 from opentelemetry.proto.collector.trace.v1.trace_service_pb2 import (
     ExportTraceServiceRequest,
 )
-from pydantic import BaseModel, ConfigDict, Field
+from pydantic import BaseModel, ConfigDict, Field, field_validator
+
+
+_SPAN_KIND_BY_NAME = {
+    "SPAN_KIND_UNSPECIFIED": 0,
+    "SPAN_KIND_INTERNAL": 1,
+    "SPAN_KIND_SERVER": 2,
+    "SPAN_KIND_CLIENT": 3,
+    "SPAN_KIND_PRODUCER": 4,
+    "SPAN_KIND_CONSUMER": 5,
+}
+
+_STATUS_CODE_BY_NAME = {
+    "STATUS_CODE_UNSET": 0,
+    "STATUS_CODE_OK": 1,
+    "STATUS_CODE_ERROR": 2,
+}
 
 
 class OtlpArrayValue(BaseModel):
@@ -63,6 +79,13 @@ class OtlpStatus(BaseModel):
     code: int = 0
     message: str | None = None
 
+    @field_validator("code", mode="before")
+    @classmethod
+    def _coerce_code(cls, v: object) -> object:
+        if isinstance(v, str):
+            return _STATUS_CODE_BY_NAME.get(v, 0)
+        return v
+
 
 class OtlpSpan(BaseModel):
     model_config = ConfigDict(populate_by_name=True)
@@ -76,6 +99,13 @@ class OtlpSpan(BaseModel):
     end_time_unix_nano: str = Field("0", alias="endTimeUnixNano")
     attributes: list[OtlpKeyValue] = []
     status: OtlpStatus | None = None
+
+    @field_validator("kind", mode="before")
+    @classmethod
+    def _coerce_kind(cls, v: object) -> object:
+        if isinstance(v, str):
+            return _SPAN_KIND_BY_NAME.get(v, 0)
+        return v
 
 
 class OtlpResource(BaseModel):

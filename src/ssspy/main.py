@@ -24,4 +24,8 @@ def create_app(settings: Settings) -> FastAPI:
 
     app = FastAPI(title="ssspy", lifespan=lifespan)
     app.state.settings = settings
+
+    from .ingest.routes import router as ingest_router
+
+    app.include_router(ingest_router)
     return app

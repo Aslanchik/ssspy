@@ -1,0 +1,55 @@
+{% extends "base.html" %}
+{% block title %}traces — ssspy{% endblock %}
+{% block content %}
+<form method="get" action="/" class="filters">
+  <input name="agent"   placeholder="agent"   value="{{ filters.agent or '' }}">
+  <input name="version" placeholder="version" value="{{ filters.version or '' }}">
+  <input name="url"     placeholder="url contains" value="{{ filters.url or '' }}">
+  <input name="since"   placeholder="since (ISO 8601)" value="{{ filters.since or '' }}">
+  <input name="until"   placeholder="until (ISO 8601)" value="{{ filters.until or '' }}">
+  <button type="submit">filter</button>
+</form>
+
+<table class="traces">
+  <thead>
+    <tr>
+      <th>started</th>
+      <th>name</th>
+      <th>agent</th>
+      <th>version</th>
+      <th>target url</th>
+      <th>duration</th>
+      <th>status</th>
+      <th>spans</th>
+    </tr>
+  </thead>
+  <tbody>
+    {% for r in rows %}
+    <tr>
+      <td>{{ r.start_time.isoformat(timespec="seconds") }}</td>
+      <td>
+        <a href="/traces/{{ r.trace_id.hex() }}">
+          {% if r.root_name %}{{ r.root_name }}{% else %}<span class="badge incomplete">(incomplete)</span>{% endif %}
+        </a>
+      </td>
+      <td>{{ r.agent_name or "" }}</td>
+      <td>{{ r.agent_version or "" }}</td>
+      <td>{{ r.target_url or "" }}</td>
+      <td>{{ r.duration_ms if r.duration_ms is not none else "" }}{% if r.duration_ms is not none %} ms{% endif %}</td>
+      <td><span class="status status-{{ (r.status_code or 'unset')|lower }}">{{ r.status_code or "Unset" }}</span></td>
+      <td>{{ r.span_count }}</td>
+    </tr>
+    {% endfor %}
+  </tbody>
+</table>
+
+<nav class="pager">
+  {% if page > 1 %}
+    <a href="?page={{ page - 1 }}{% if filters.agent %}&agent={{ filters.agent }}{% endif %}{% if filters.version %}&version={{ filters.version }}{% endif %}{% if filters.url %}&url={{ filters.url }}{% endif %}">‹ prev</a>
+  {% endif %}
+  <span>page {{ page }}</span>
+  {% if rows|length == 50 %}
+    <a href="?page={{ page + 1 }}{% if filters.agent %}&agent={{ filters.agent }}{% endif %}{% if filters.version %}&version={{ filters.version }}{% endif %}{% if filters.url %}&url={{ filters.url }}{% endif %}">next ›</a>
+  {% endif %}
+</nav>
+{% endblock %}

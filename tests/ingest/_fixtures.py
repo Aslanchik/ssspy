@@ -219,15 +219,40 @@ def full_envelope() -> ExportTraceServiceRequest:
     )
 
 
+SKIP_LLM_TRACE_HEX = "abcdef0123456789abcdef0123456789"
+SKIP_LLM_ROOT_SPAN_HEX = "22" * 8
+
+
 def skip_llm_envelope() -> ExportTraceServiceRequest:
-    """5-span trace: root + 4 phases, no chat/tool spans (mimics --skip-llm)."""
+    """5-span trace: root + 4 phases, no chat/tool spans (mimics --skip-llm).
+
+    Uses a distinct trace_id from ``full_envelope`` so seeding both in the same
+    database produces two rows in ``traces``.
+    """
     base = 1_700_000_010_000_000_000
 
     def hex_(n: int) -> str:
         return f"{n:016x}"
 
-    root = _span(
-        ROOT_SPAN_HEX,
+    def mkspan(span_id_hex: str, parent_hex: str | None, name: str,
+               start_ns: int, end_ns: int, attrs, kind=Span.SpanKind.SPAN_KIND_INTERNAL,
+               status=Status.STATUS_CODE_UNSET) -> Span:
+        sp = Span(
+            trace_id=bytes.fromhex(SKIP_LLM_TRACE_HEX),
+            span_id=bytes.fromhex(span_id_hex),
+            name=name,
+            kind=kind,
+            start_time_unix_nano=start_ns,
+            end_time_unix_nano=end_ns,
+            status=Status(code=status),
+            attributes=list(attrs),
+        )
+        if parent_hex:
+            sp.parent_span_id = bytes.fromhex(parent_hex)
+        return sp
+
+    root = mkspan(
+        SKIP_LLM_ROOT_SPAN_HEX,
         None,
         "ssspy.investigation",
         base,
@@ -243,9 +268,9 @@ def skip_llm_envelope() -> ExportTraceServiceRequest:
     phases = []
     for i, ph in enumerate(["fetch", "hypothesis", "enrichment", "synthesis"], start=1):
         phases.append(
-            _span(
+            mkspan(
                 hex_(0x100 + i),
-                ROOT_SPAN_HEX,
+                SKIP_LLM_ROOT_SPAN_HEX,
                 f"ssspy.phase.{ph}",
                 base + i * 100_000_000,
                 base + (i + 1) * 100_000_000,

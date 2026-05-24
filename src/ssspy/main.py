@@ -25,7 +25,16 @@ def create_app(settings: Settings) -> FastAPI:
     app = FastAPI(title="ssspy", lifespan=lifespan)
     app.state.settings = settings
 
+    from pathlib import Path
+
+    from fastapi.staticfiles import StaticFiles
+
     from .ingest.routes import router as ingest_router
+    from .web.routes import router as web_router
 
     app.include_router(ingest_router)
+    app.include_router(web_router)
+
+    static_dir = Path(__file__).parent / "web" / "static"
+    app.mount("/static", StaticFiles(directory=str(static_dir)), name="static")
     return app

@@ -1,1 +1,53 @@
-{# go-phish agent partial; populated in T-11. #}
+{# go-phish agent partial.
+
+   Reads attributes defensively from trace.root. Missing or malformed values
+   render as blank — never raise from a template.
+#}
+{% set root = trace.root %}
+{% if root %}
+{% set ra = root.attributes %}
+
+<section class="agent-panel agent-go-phish">
+  <h2>go-phish</h2>
+  <dl class="trace-meta">
+    <dt>target url</dt><dd>{{ ra.get("ssspy.investigation.target_url") or "" }}</dd>
+    <dt>agent version</dt><dd>{{ ra.get("ssspy.agent.version") or "" }}</dd>
+    <dt>investigation id</dt><dd><code>{{ ra.get("ssspy.investigation.id") or "" }}</code></dd>
+  </dl>
+
+  {% set phase_order = ["fetch", "hypothesis", "enrichment", "synthesis"] %}
+  {% set phases_by_name = {} %}
+  {% for child in spans_by_parent.get(root.span_id, []) %}
+    {% set ph = child.attributes.get("ssspy.investigation.phase") %}
+    {% if ph %}{% set _ = phases_by_name.update({ph: child}) %}{% endif %}
+  {% endfor %}
+
+  {% for ph in phase_order %}
+    {% set phase_span = phases_by_name.get(ph) %}
+    {% if phase_span %}
+    <div class="phase phase-{{ ph }}">
+      <h3>Phase {{ loop.index }}: {{ ph }}
+        <span class="duration">{{ phase_span.duration_ms }}ms</span>
+        <span class="status status-{{ phase_span.status_code|lower }}">{{ phase_span.status_code }}</span>
+      </h3>
+      {% set phase_kids = spans_by_parent.get(phase_span.span_id, []) %}
+      {% set llm_count = phase_kids|selectattr("gen_ai_request_model")|list|length %}
+      {% set tool_count = phase_kids|selectattr("tool_name")|list|length %}
+      <p class="phase-children">
+        {{ llm_count }} LLM call{{ "s" if llm_count != 1 else "" }},
+        {{ tool_count }} tool call{{ "s" if tool_count != 1 else "" }}
+      </p>
+      {% if ph in ("hypothesis", "synthesis") %}
+        {% set outcome = phase_span.attributes.get("ssspy.investigation.outcome") %}
+        {% if outcome is not none %}
+          <details class="outcome">
+            <summary>outcome</summary>
+            <pre>{{ outcome|pretty_json }}</pre>
+          </details>
+        {% endif %}
+      {% endif %}
+    </div>
+    {% endif %}
+  {% endfor %}
+</section>
+{% endif %}

@@ -87,7 +87,22 @@ def span_display_attrs(span) -> list[tuple[str, object]]:
     return sorted(merged.items(), key=lambda kv: kv[0])
 
 
+def pretty_json(value: object) -> str:
+    """Pretty-print a JSON-ish value. Returns the raw value if it isn't JSON."""
+    import json
+
+    if isinstance(value, str):
+        try:
+            return json.dumps(json.loads(value), indent=2, sort_keys=True)
+        except (TypeError, ValueError):
+            return value
+    if isinstance(value, (dict, list)):
+        return json.dumps(value, indent=2, sort_keys=True, default=str)
+    return str(value)
+
+
 templates.env.filters["render_attr_value"] = render_attr_value
+templates.env.filters["pretty_json"] = pretty_json
 templates.env.globals["render_attr_value"] = render_attr_value
 templates.env.globals["span_display_attrs"] = span_display_attrs
 
